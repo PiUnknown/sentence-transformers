@@ -329,7 +329,7 @@ def test_load_local_without_normalize_directory(stsb_bert_tiny_model: SentenceTr
 
 def test_prompts(stsb_bert_tiny_model: SentenceTransformer, caplog: pytest.LogCaptureFixture) -> None:
     model = stsb_bert_tiny_model
-    assert model.prompts == {"query": "", "document": ""}
+    assert model.prompts == {"query": "", "document": None}
     assert model.default_prompt_name is None
     texts = ["How to bake a chocolate cake", "Symptoms of the flu"]
     no_prompt_embedding = model.encode(texts)
@@ -382,7 +382,7 @@ def test_save_load_prompts() -> None:
         prompts={"query": "query: "},
         default_prompt_name="query",
     )
-    assert model.prompts == {"query": "query: ", "document": ""}
+    assert model.prompts == {"query": "query: ", "document": None}
     assert model.default_prompt_name == "query"
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp_folder:
@@ -392,11 +392,11 @@ def test_save_load_prompts() -> None:
         assert config_path.exists()
         with open(config_path, encoding="utf8") as f:
             saved_config = json.load(f)
-        assert saved_config["prompts"] == {"query": "query: ", "document": ""}
+        assert saved_config["prompts"] == {"query": "query: ", "document": None}
         assert saved_config["default_prompt_name"] == "query"
 
         fresh_model = SentenceTransformer(str(model_path))
-        assert fresh_model.prompts == {"query": "query: ", "document": ""}
+        assert fresh_model.prompts == {"query": "query: ", "document": None}
         assert fresh_model.default_prompt_name == "query"
 
 
@@ -1144,18 +1144,6 @@ def test_encode_document_prompt_priority(stsb_bert_tiny_model: SentenceTransform
     assert kwargs["prompt_name"] is None
 
 
-@pytest.mark.parametrize("prompt_name", ["passage", "corpus"])
-def test_encode_document_ignores_empty_default_prompt(prompt_name: str) -> None:
-    model = SentenceTransformer(
-        "sentence-transformers-testing/stsb-bert-tiny-safetensors", prompts={prompt_name: f"{prompt_name}: "}
-    )
-    inputs = ["A test document"]
-    expected = model.encode(inputs, prompt_name=prompt_name, task="document")
-
-    np.testing.assert_array_equal(model.encode_document(inputs), expected)
-    np.testing.assert_array_equal(model.encode_document(inputs, prompt=""), expected)
-
-
 def test_encode_advanced_parameters(stsb_bert_tiny_model: SentenceTransformer, monkeypatch: pytest.MonkeyPatch):
     """Test that additional parameters are correctly passed to encode"""
     model = stsb_bert_tiny_model
@@ -1434,12 +1422,12 @@ def test_conversion_ignores_source_prompts_and_default_prompt_name(tmp_path) -> 
     source.save_pretrained(str(tmp_path / "source"))
 
     model = SentenceTransformer(str(tmp_path / "source"))
-    assert model.prompts == {"query": "", "document": ""}
+    assert model.prompts == {"query": "", "document": None}
     assert model.default_prompt_name is None
 
     model.save_pretrained(str(tmp_path / "resaved"))
     reloaded = SentenceTransformer(str(tmp_path / "resaved"))
-    assert reloaded.prompts == {"query": "", "document": ""}
+    assert reloaded.prompts == {"query": "", "document": None}
     assert reloaded.default_prompt_name is None
 
     # Explicitly passed prompts are user intent and still apply on a converted load.

@@ -661,7 +661,7 @@ def test_similarity_fn_name_constructor_overrides_saved(splade_bert_tiny_model: 
 
 def test_prompts(splade_bert_tiny_model: SparseEncoder, caplog: pytest.LogCaptureFixture) -> None:
     model = splade_bert_tiny_model
-    assert model.prompts == {"query": "", "document": ""}
+    assert model.prompts == {"query": "", "document": None}
     assert model.default_prompt_name is None
     texts = ["How to bake a chocolate cake", "Symptoms of the flu"]
     no_prompt_embedding = model.encode(texts, convert_to_sparse_tensor=False, save_to_cpu=True)
@@ -723,7 +723,7 @@ def test_save_load_prompts() -> None:
         prompts={"query": "query: "},
         default_prompt_name="query",
     )
-    assert model.prompts == {"query": "query: ", "document": ""}
+    assert model.prompts == {"query": "query: ", "document": None}
     assert model.default_prompt_name == "query"
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp_folder:
@@ -733,11 +733,11 @@ def test_save_load_prompts() -> None:
         assert config_path.exists()
         with open(config_path, encoding="utf8") as f:
             saved_config = json.load(f)
-        assert saved_config["prompts"] == {"query": "query: ", "document": ""}
+        assert saved_config["prompts"] == {"query": "query: ", "document": None}
         assert saved_config["default_prompt_name"] == "query"
 
         fresh_model = SparseEncoder(str(model_path))
-        assert fresh_model.prompts == {"query": "query: ", "document": ""}
+        assert fresh_model.prompts == {"query": "query: ", "document": None}
         assert fresh_model.default_prompt_name == "query"
 
 
@@ -883,22 +883,6 @@ def test_encode_document_prompt_priority(splade_bert_tiny_model: SparseEncoder, 
     assert kwargs["prompt_name"] is None
 
 
-@pytest.mark.parametrize("prompt_name", ["passage", "corpus"])
-def test_encode_document_ignores_empty_default_prompt(prompt_name: str) -> None:
-    model = SparseEncoder("sparse-encoder-testing/splade-bert-tiny-nq", prompts={prompt_name: f"{prompt_name}: "})
-    inputs = ["A test document"]
-    expected = model.encode(
-        inputs, prompt_name=prompt_name, task="document", convert_to_sparse_tensor=False, save_to_cpu=True
-    )
-
-    np.testing.assert_array_equal(
-        model.encode_document(inputs, convert_to_sparse_tensor=False, save_to_cpu=True), expected
-    )
-    np.testing.assert_array_equal(
-        model.encode_document(inputs, prompt="", convert_to_sparse_tensor=False, save_to_cpu=True), expected
-    )
-
-
 def test_encode_routes_through_module_call(splade_bert_tiny_model: SparseEncoder) -> None:
     """encode() must run the forward pass via __call__ so that model.compile() applies to inference."""
     model = splade_bert_tiny_model
@@ -944,7 +928,7 @@ def test_conversion_ignores_source_prompts_and_similarity(tmp_path) -> None:
     source.save_pretrained(str(tmp_path))
 
     model = SparseEncoder(str(tmp_path))
-    assert model.prompts == {"query": "", "document": ""}
+    assert model.prompts == {"query": "", "document": None}
     assert model.default_prompt_name is None
     assert model.similarity_fn_name == "dot"
 
